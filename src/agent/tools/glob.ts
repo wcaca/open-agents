@@ -1,14 +1,14 @@
 import { tool } from "ai";
 import { z } from "zod";
 import * as path from "path";
-import type { Sandbox } from "../../sandbox";
+import type { Sandbox } from "../sandbox";
 import {
   isPathWithinDirectory,
   getSandbox,
   pathMatchesGlob,
   getApprovalContext,
-} from "../../utils";
-import type { ApprovalRule } from "../../types";
+} from "./utils";
+import type { ApprovalRule } from "../types";
 
 interface FileInfo {
   path: string;

@@ -1,12 +1,8 @@
 import { tool } from "ai";
 import { z } from "zod";
 import * as path from "path";
-import {
-  isPathWithinDirectory,
-  getSandbox,
-  getApprovalContext,
-} from "../../utils";
-import type { ApprovalRule } from "../../types";
+import { isPathWithinDirectory, getSandbox, getApprovalContext } from "./utils";
+import type { ApprovalRule } from "../types";
 
 const TIMEOUT_MS = 120_000;
 

@@ -1,7 +1,25 @@
 import type { ModelMessage, JSONValue, LanguageModel, ToolSet } from "ai";
-import { isAnthropicModel, DEFAULT_CACHE_CONTROL_OPTIONS } from "./shared";
 
 type ProviderOptions = Record<string, Record<string, JSONValue>>;
+
+function isAnthropicModel(model: LanguageModel): boolean {
+  if (typeof model === "string") {
+    return model.includes("anthropic") || model.includes("claude");
+  }
+  return (
+    model.provider === "anthropic" ||
+    model.provider.includes("anthropic") ||
+    model.modelId.includes("anthropic") ||
+    model.modelId.includes("claude")
+  );
+}
+
+const DEFAULT_CACHE_CONTROL_OPTIONS: Record<
+  string,
+  Record<string, JSONValue>
+> = {
+  anthropic: { cacheControl: { type: "ephemeral" } },
+};
 
 /**
  * Adds provider-specific cache control options to tools for optimal caching.

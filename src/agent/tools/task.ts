@@ -1,9 +1,9 @@
 import { tool, readUIMessageStream, type UIToolInvocation } from "ai";
 import { z } from "zod";
-import { explorerSubagent } from "./subagents/explorer";
-import { executorSubagent } from "./subagents/executor";
-import { getSandbox, getApprovalContext } from "../../utils";
-import type { ApprovalRule } from "../../types";
+import { explorerSubagent } from "../subagents/explorer";
+import { executorSubagent } from "../subagents/executor";
+import { getSandbox, getApprovalContext } from "./utils";
+import type { ApprovalRule } from "../types";
 
 const subagentTypeSchema = z.enum(["explorer", "executor"]);
 

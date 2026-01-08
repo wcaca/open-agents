@@ -2,11 +2,7 @@ import { tool } from "ai";
 import { z } from "zod";
 import * as path from "path";
 import * as fs from "fs";
-import {
-  isPathWithinDirectory,
-  getSandbox,
-  getApprovalContext,
-} from "../../utils";
+import { isPathWithinDirectory, getSandbox, getApprovalContext } from "./utils";
 
 const readInputSchema = z.object({
   filePath: z

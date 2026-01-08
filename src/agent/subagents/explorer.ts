@@ -1,10 +1,10 @@
 import { ToolLoopAgent, stepCountIs } from "ai";
 import { z } from "zod";
-import { readFileTool } from "../../file-system/read";
-import { grepTool } from "../../file-system/grep";
-import { globTool } from "../../file-system/glob";
-import { bashTool, commandNeedsApproval } from "../../file-system/bash";
-import type { Sandbox } from "../../../sandbox";
+import { readFileTool } from "../tools/read";
+import { grepTool } from "../tools/grep";
+import { globTool } from "../tools/glob";
+import { bashTool, commandNeedsApproval } from "../tools/bash";
+import type { Sandbox } from "../sandbox";
 
 const EXPLORER_SYSTEM_PROMPT = `You are an explorer agent - a fast, read-only subagent specialized for exploring codebases.
 

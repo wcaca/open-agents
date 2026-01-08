@@ -1,6 +1,6 @@
 import { tool } from "ai";
 import { z } from "zod";
-import { todoItemSchema } from "../../types";
+import { todoItemSchema } from "../types";
 
 export const todoWriteTool = tool({
   description: `Create and manage a structured task list for the current session.

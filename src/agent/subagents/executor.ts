@@ -1,11 +1,11 @@
 import { ToolLoopAgent, stepCountIs } from "ai";
 import { z } from "zod";
-import { readFileTool } from "../../file-system/read";
-import { writeFileTool, editFileTool } from "../../file-system/write";
-import { grepTool } from "../../file-system/grep";
-import { globTool } from "../../file-system/glob";
-import { bashTool, commandNeedsApproval } from "../../file-system/bash";
-import type { Sandbox } from "../../../sandbox";
+import { readFileTool } from "../tools/read";
+import { writeFileTool, editFileTool } from "../tools/write";
+import { grepTool } from "../tools/grep";
+import { globTool } from "../tools/glob";
+import { bashTool, commandNeedsApproval } from "../tools/bash";
+import type { Sandbox } from "../sandbox";
 
 const EXECUTOR_SYSTEM_PROMPT = `You are an executor agent - a fire-and-forget subagent that completes specific, well-defined implementation tasks autonomously.
 

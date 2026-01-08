@@ -6,8 +6,8 @@ import {
   getSandbox,
   pathMatchesGlob,
   getApprovalContext,
-} from "../../utils";
-import type { ApprovalRule } from "../../types";
+} from "./utils";
+import type { ApprovalRule } from "../types";
 
 const writeInputSchema = z.object({
   filePath: z.string().describe("Absolute path to the file to write"),
