@@ -11,10 +11,14 @@ import {
   GitMerge,
   GitPullRequest,
   GitPullRequestClosed,
+  Globe,
   Loader2,
+  RefreshCw,
+  Sparkles,
   SquareDot,
   SquareMinus,
   SquarePlus,
+  WandSparkles,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { DiffFile } from "@/app/api/sessions/[sessionId]/diff/route";
@@ -86,6 +90,7 @@ type GitPanelProps = {
   hasUncommittedGitChanges: boolean;
   supportsRepoCreation: boolean;
   hasDiff: boolean;
+  canCloseAndArchive: boolean;
 
   // Diff data
   diffFiles: DiffFile[] | null;
@@ -93,19 +98,25 @@ type GitPanelProps = {
     totalAdditions: number;
     totalDeletions: number;
   } | null;
+  diffRefreshing: boolean;
 
   // Actions
   onCreateRepoClick: () => void;
+  refreshDiff: () => Promise<void>;
 
   // Merge
   onMerged: (result: MergePullRequestResponse) => Promise<void> | void;
+  onCloseAndArchiveClick: () => void;
   onFixChecks?: (failedRuns: PullRequestCheckRun[]) => Promise<void> | void;
+  onFixConflicts?: (baseBranchRef: string) => Promise<void> | void;
 
   // For inline commit
   hasSandbox: boolean;
   gitStatus: SessionGitStatus | null;
+  gitStatusLoading: boolean;
   refreshGitStatus: () => Promise<SessionGitStatus | undefined>;
   onCommitted?: () => void;
+  isAgentWorking: boolean;
 
   // For inline PR creation
   onPrDetected?: (info: {
@@ -212,16 +223,18 @@ function InlineCommitPanel({
   gitStatus,
   refreshGitStatus,
   onCommitted,
+  isAgentWorking,
 }: {
   session: Session;
   hasSandbox: boolean;
   gitStatus: SessionGitStatus | null;
   refreshGitStatus: () => Promise<SessionGitStatus | undefined>;
   onCommitted?: () => void;
+  isAgentWorking: boolean;
 }) {
-  const [commitTitle, setCommitTitle] = useState("");
-  const [commitBody, setCommitBody] = useState("");
+  const [commitMessage, setCommitMessage] = useState("");
   const [isCommitting, setIsCommitting] = useState(false);
+  const [isGeneratingMessage, setIsGeneratingMessage] = useState(false);
   const [commitError, setCommitError] = useState<string | null>(null);
   const [commitSuccess, setCommitSuccess] = useState<{
     commitSha?: string;
@@ -289,21 +302,43 @@ function InlineCommitPanel({
     }
   };
 
-  const handleCommit = async () => {
+  const handleGenerateMessage = async () => {
+    setIsGeneratingMessage(true);
+    try {
+      const res = await fetch(
+        `/api/sessions/${session.id}/generate-commit-message`,
+        { method: "POST" },
+      );
+      const data = await res.json();
+      if (data.message) {
+        setCommitMessage(data.message);
+      }
+    } catch {
+      // silently fail
+    } finally {
+      setIsGeneratingMessage(false);
+    }
+  };
+
+  const handleCommit = async (skipPush = false) => {
     if (!hasSandbox || !hasPendingGitWork) return;
     setIsCommitting(true);
     setCommitError(null);
     setCommitSuccess(null);
 
     try {
+      const trimmed = commitMessage.trim();
+      const lines = trimmed.split("\n");
+      const commitTitle = lines[0] ?? "";
+      const commitBody = lines.slice(1).join("\n").trim();
+
       const response = await commitAndPushSessionChanges({
         sessionId: session.id,
         sessionTitle: session.title,
         baseBranch,
         branchName: displayBranch,
-        ...(commitTitle.trim()
-          ? { commitTitle: commitTitle.trim(), commitBody: commitBody.trim() }
-          : {}),
+        ...(commitTitle ? { commitTitle, commitBody } : {}),
+        skipPush,
       });
 
       if (response.branchName && response.branchName !== "HEAD") {
@@ -312,10 +347,11 @@ function InlineCommitPanel({
 
       setCommitSuccess({
         commitSha: response.gitActions?.commitSha,
-        commitMessage: response.gitActions?.commitMessage,
+        commitMessage:
+          response.gitActions?.commitMessage ??
+          (skipPush ? "Changes committed" : "Changes committed & pushed"),
       });
-      setCommitTitle("");
-      setCommitBody("");
+      setCommitMessage("");
 
       onCommitted?.();
 
@@ -345,7 +381,7 @@ function InlineCommitPanel({
           size="sm"
           className="w-full text-xs"
           onClick={() => void handleCreateBranch()}
-          disabled={isCreatingBranch || !hasSandbox}
+          disabled={isAgentWorking || isCreatingBranch || !hasSandbox}
         >
           {isCreatingBranch ? (
             <>
@@ -359,6 +395,11 @@ function InlineCommitPanel({
             </>
           )}
         </Button>
+        {isAgentWorking && (
+          <div className="rounded-md border border-border bg-muted/40 p-2 text-xs text-muted-foreground">
+            Wait for the agent to finish before creating a branch.
+          </div>
+        )}
         {commitError && (
           <div className="rounded-md bg-destructive/10 p-2 text-xs text-destructive">
             {commitError}
@@ -368,54 +409,88 @@ function InlineCommitPanel({
     );
   }
 
-  // Success state
-  if (commitSuccess) {
-    return (
-      <div className="flex items-center gap-2 rounded-md border border-green-500/30 bg-green-500/10 p-2 text-xs text-green-700 dark:text-green-300">
-        <Check className="h-3.5 w-3.5 shrink-0" />
-        <span className="min-w-0 truncate">
-          {commitSuccess.commitMessage ?? "Changes committed & pushed"}
-        </span>
-      </div>
-    );
-  }
+  const commitDisabled =
+    isAgentWorking || isCommitting || !hasSandbox || !hasPendingGitWork;
 
   // Commit form
   return (
     <div className="space-y-2">
-      <Input
-        placeholder="Commit message (optional)"
-        value={commitTitle}
-        onChange={(e) => setCommitTitle(e.target.value)}
-        disabled={isCommitting || !hasPendingGitWork}
-        className="h-8 text-xs"
-      />
-      <Textarea
-        placeholder="Description (optional)"
-        value={commitBody}
-        onChange={(e) => setCommitBody(e.target.value)}
-        disabled={isCommitting || !hasPendingGitWork}
-        rows={3}
-        className="resize-none text-xs field-sizing-fixed"
-      />
-      <Button
-        size="sm"
-        className="w-full text-xs"
-        onClick={() => void handleCommit()}
-        disabled={isCommitting || !hasSandbox || !hasPendingGitWork}
-      >
-        {isCommitting ? (
-          <>
-            <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-            Committing...
-          </>
-        ) : (
-          <>
-            <GitCommit className="mr-1.5 h-3.5 w-3.5" />
-            Commit & Push
-          </>
-        )}
-      </Button>
+      <div className="relative">
+        <Textarea
+          placeholder="Commit message"
+          value={commitMessage}
+          onChange={(e) => setCommitMessage(e.target.value)}
+          disabled={isAgentWorking || isCommitting || !hasPendingGitWork}
+          rows={2}
+          className="resize-none pb-7 text-xs"
+        />
+        <button
+          type="button"
+          className="absolute bottom-1.5 left-1.5 rounded p-1 text-muted-foreground/40 transition-colors hover:bg-muted/50 hover:text-muted-foreground disabled:pointer-events-none disabled:opacity-50"
+          onClick={() => void handleGenerateMessage()}
+          disabled={isGeneratingMessage || !hasPendingGitWork}
+        >
+          {isGeneratingMessage ? (
+            <Loader2 className="h-3 w-3 animate-spin" />
+          ) : (
+            <WandSparkles className="h-3 w-3" />
+          )}
+        </button>
+      </div>
+      {commitSuccess ? (
+        <div className="flex h-8 items-center justify-center gap-1.5 rounded-md border border-green-500/30 bg-green-500/10 text-xs font-medium text-green-700 dark:text-green-300">
+          <Check className="h-3.5 w-3.5" />
+          {commitSuccess.commitMessage ?? "Pushed"}
+        </div>
+      ) : (
+        <div className="flex w-full">
+          <Button
+            size="sm"
+            className="min-w-0 flex-1 rounded-r-none text-xs"
+            onClick={() => void handleCommit()}
+            disabled={commitDisabled}
+          >
+            {isCommitting ? (
+              <>
+                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                Committing...
+              </>
+            ) : (
+              <>
+                <GitCommit className="mr-1.5 h-3.5 w-3.5" />
+                Commit & Push
+              </>
+            )}
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="default"
+                size="icon"
+                className="h-8 w-8 rounded-l-none border-l border-l-primary-foreground/25"
+                disabled={commitDisabled}
+                aria-label="Commit options"
+              >
+                <ChevronDown className="h-3.5 w-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="min-w-[10rem]">
+              <DropdownMenuItem
+                onSelect={() => void handleCommit(true)}
+                className="gap-2 text-xs"
+              >
+                <GitCommit className="h-3.5 w-3.5 text-muted-foreground" />
+                Commit only
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      )}
+      {isAgentWorking && (
+        <div className="rounded-md border border-border bg-muted/40 p-2 text-xs text-muted-foreground">
+          Wait for the agent to finish before committing or pushing.
+        </div>
+      )}
       {commitError && (
         <div className="rounded-md bg-destructive/10 p-2 text-xs text-destructive">
           {commitError}
@@ -436,6 +511,7 @@ function InlinePrCreatePanel({
   refreshGitStatus,
   hasUncommittedGitChanges,
   onPrDetected,
+  isAgentWorking,
 }: {
   session: Session;
   hasSandbox: boolean;
@@ -446,6 +522,7 @@ function InlinePrCreatePanel({
     prNumber: number;
     prStatus: "open" | "merged" | "closed";
   }) => void;
+  isAgentWorking: boolean;
 }) {
   const [prTitle, setPrTitle] = useState("");
   const [prBody, setPrBody] = useState("");
@@ -454,6 +531,7 @@ function InlinePrCreatePanel({
   const [prSuccess, setPrSuccess] = useState<{
     prUrl: string;
     requiresManualCreation?: boolean;
+    isDraft?: boolean;
   } | null>(null);
   const [baseBranch, setBaseBranch] = useState("main");
   const [isCreatingBranch, setIsCreatingBranch] = useState(false);
@@ -505,7 +583,31 @@ function InlinePrCreatePanel({
     }
   };
 
-  const handleCreatePr = async () => {
+  const handleGenerateContent = async () => {
+    setIsGenerating(true);
+    try {
+      const generated = await generatePullRequestContent({
+        sessionId: session.id,
+        sessionTitle: session.title,
+        baseBranch,
+        branchName: displayBranch,
+      });
+      setPrTitle(generated.title ?? session.title);
+      setPrBody(generated.body ?? "");
+      if (generated.prHeadOwner) {
+        setPrHeadOwner(generated.prHeadOwner);
+      }
+      if (generated.branchName && generated.branchName !== "HEAD") {
+        setResolvedBranch(generated.branchName);
+      }
+    } catch {
+      // silently fail
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleCreatePr = async (isDraft = false) => {
     setIsCreatingPr(true);
     setPrError(null);
 
@@ -570,6 +672,7 @@ function InlinePrCreatePanel({
           body: finalBody,
           baseBranch,
           headOwner: prHeadOwner ?? undefined,
+          isDraft,
         }),
       });
 
@@ -582,6 +685,7 @@ function InlinePrCreatePanel({
       setPrSuccess({
         prUrl: data.prUrl,
         requiresManualCreation: Boolean(data.requiresManualCreation),
+        isDraft,
       });
 
       if (typeof data.prNumber === "number") {
@@ -609,7 +713,9 @@ function InlinePrCreatePanel({
           <span>
             {prSuccess.requiresManualCreation
               ? "Compare page opened"
-              : "Pull request created!"}
+              : prSuccess.isDraft
+                ? "Draft pull request created!"
+                : "Pull request created!"}
           </span>
         </div>
         {/* oxlint-disable-next-line nextjs/no-html-link-for-pages */}
@@ -641,7 +747,7 @@ function InlinePrCreatePanel({
           size="sm"
           className="w-full text-xs"
           onClick={() => void handleCreateBranch()}
-          disabled={isCreatingBranch || !hasSandbox}
+          disabled={isAgentWorking || isCreatingBranch || !hasSandbox}
         >
           {isCreatingBranch ? (
             <>
@@ -655,6 +761,11 @@ function InlinePrCreatePanel({
             </>
           )}
         </Button>
+        {isAgentWorking && (
+          <div className="rounded-md border border-border bg-muted/40 p-2 text-xs text-muted-foreground">
+            Wait for the agent to finish before creating a branch.
+          </div>
+        )}
         {prError && (
           <div className="rounded-md bg-destructive/10 p-2 text-xs text-destructive">
             {prError}
@@ -673,42 +784,87 @@ function InlinePrCreatePanel({
     );
   }
 
+  const prDisabled = isAgentWorking || isCreatingPr || !hasSandbox;
+
   // PR creation form
   return (
     <div className="space-y-2">
-      <Input
-        placeholder="PR title (optional)"
-        value={prTitle}
-        onChange={(e) => setPrTitle(e.target.value)}
-        disabled={isCreatingPr}
-        className="h-8 text-xs"
-      />
+      <div className="relative">
+        <Input
+          placeholder="PR title"
+          value={prTitle}
+          onChange={(e) => setPrTitle(e.target.value)}
+          disabled={isAgentWorking || isCreatingPr}
+          className="h-8 pr-7 text-xs"
+        />
+        <button
+          type="button"
+          className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground/40 transition-colors hover:bg-muted/50 hover:text-muted-foreground disabled:pointer-events-none disabled:opacity-50"
+          onClick={() => void handleGenerateContent()}
+          disabled={isGenerating}
+        >
+          {isGenerating ? (
+            <Loader2 className="h-3 w-3 animate-spin" />
+          ) : (
+            <WandSparkles className="h-3 w-3" />
+          )}
+        </button>
+      </div>
       <Textarea
-        placeholder="Description (optional)"
+        placeholder="Description"
         value={prBody}
         onChange={(e) => setPrBody(e.target.value)}
-        disabled={isCreatingPr}
+        disabled={isAgentWorking || isCreatingPr}
         rows={3}
-        className="resize-none text-xs field-sizing-fixed"
+        className="max-h-40 text-xs"
       />
-      <Button
-        size="sm"
-        className="w-full text-xs"
-        onClick={() => void handleCreatePr()}
-        disabled={isCreatingPr || !hasSandbox}
-      >
-        {isCreatingPr ? (
-          <>
-            <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-            {isGenerating ? "Generating..." : "Creating..."}
-          </>
-        ) : (
-          <>
-            <GitPullRequest className="mr-1.5 h-3.5 w-3.5" />
-            Create Pull Request
-          </>
-        )}
-      </Button>
+      <div className="flex w-full">
+        <Button
+          size="sm"
+          className="min-w-0 flex-1 rounded-r-none text-xs"
+          onClick={() => void handleCreatePr()}
+          disabled={prDisabled}
+        >
+          {isCreatingPr ? (
+            <>
+              <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+              {isGenerating ? "Generating..." : "Creating..."}
+            </>
+          ) : (
+            <>
+              <GitPullRequest className="mr-1.5 h-3.5 w-3.5" />
+              Create Pull Request
+            </>
+          )}
+        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="default"
+              size="icon"
+              className="h-8 w-8 rounded-l-none border-l border-l-primary-foreground/25"
+              disabled={prDisabled}
+              aria-label="PR options"
+            >
+              <ChevronDown className="h-3.5 w-3.5" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="min-w-[10rem]">
+            <DropdownMenuItem
+              onSelect={() => void handleCreatePr(true)}
+              className="gap-2 text-xs"
+            >
+              <GitPullRequest className="h-3.5 w-3.5 text-muted-foreground" />
+              Create Draft PR
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+      {isAgentWorking && (
+        <div className="rounded-md border border-border bg-muted/40 p-2 text-xs text-muted-foreground">
+          Wait for the agent to finish before creating a pull request.
+        </div>
+      )}
       {prError && (
         <div className="rounded-md bg-destructive/10 p-2 text-xs text-destructive">
           {prError}
@@ -725,11 +881,19 @@ function InlinePrCreatePanel({
 function InlineMergePanel({
   session,
   onMerged,
+  onCloseAndArchiveClick,
+  canCloseAndArchive,
   onFixChecks,
+  onFixConflicts,
+  isAgentWorking,
 }: {
   session: Session;
   onMerged: (result: MergePullRequestResponse) => Promise<void> | void;
+  onCloseAndArchiveClick: () => void;
+  canCloseAndArchive: boolean;
   onFixChecks?: (failedRuns: PullRequestCheckRun[]) => Promise<void> | void;
+  onFixConflicts?: (baseBranchRef: string) => Promise<void> | void;
+  isAgentWorking: boolean;
 }) {
   const [readiness, setReadiness] = useState<MergeReadinessResponse | null>(
     null,
@@ -896,8 +1060,29 @@ function InlineMergePanel({
 
   const isInitialReadinessLoading = isLoadingReadiness && !readiness;
 
+  const forceBypassableReasons = new Set([
+    "Required checks are failing",
+    "Required checks are still pending",
+    "Required checks are still in progress",
+    "Branch protection requirements are not yet satisfied",
+  ]);
+  const nonBypassableReasons =
+    readiness?.reasons.filter(
+      (reason) => !forceBypassableReasons.has(reason),
+    ) ?? [];
+  const hasMergeConflicts = nonBypassableReasons.some((reason) =>
+    reason.toLowerCase().includes("merge conflict"),
+  );
+  const baseBranchRef = readiness?.pr?.baseBranch
+    ? `origin/${readiness.pr.baseBranch}`
+    : "origin/main";
+
   const canForce =
-    readiness !== null && !readiness.canMerge && readiness.pr !== null;
+    readiness !== null &&
+    !readiness.canMerge &&
+    readiness.pr !== null &&
+    !isLoadingReadiness &&
+    nonBypassableReasons.length === 0;
 
   const handleForceClick = () => {
     if (forceConfirming) {
@@ -957,8 +1142,59 @@ function InlineMergePanel({
         }}
         isRefreshing={isLoadingReadiness}
         isLoading={isInitialReadinessLoading}
+        fixChecksDisabled={isAgentWorking}
         onFixChecks={onFixChecks}
       />
+
+      {nonBypassableReasons.length > 0 && (
+        <div className="relative overflow-hidden rounded-md border border-border bg-muted/40">
+          <div className="absolute inset-y-0 left-0 w-1 bg-amber-500 dark:bg-amber-400" />
+          <div className="space-y-2.5 py-2.5 pr-2.5 pl-3.5">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
+              <p className="text-xs font-medium text-foreground">
+                Merge blocked
+              </p>
+            </div>
+            <div className="space-y-1 pl-[22px]">
+              {nonBypassableReasons.map((reason) => (
+                <p
+                  key={reason}
+                  className="text-[11px] leading-snug text-muted-foreground"
+                >
+                  {reason}
+                </p>
+              ))}
+              {hasMergeConflicts && (
+                <p className="text-[10px] leading-relaxed text-muted-foreground/80">
+                  Fetch{" "}
+                  <code className="rounded bg-muted px-1 py-0.5 font-mono text-[10px] text-foreground/70">
+                    {baseBranchRef}
+                  </code>
+                  , resolve the conflicts, and avoid rebasing.
+                </p>
+              )}
+            </div>
+            {hasMergeConflicts && onFixConflicts && (
+              <div className="pl-[22px]">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs"
+                  disabled={isAgentWorking}
+                  onClick={() => {
+                    void onFixConflicts(baseBranchRef);
+                  }}
+                >
+                  <Sparkles className="mr-1.5 h-3 w-3" />
+                  Fix conflicts
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Delete branch toggle */}
       <div className="flex items-center justify-between rounded-md border border-border bg-muted/30 p-2.5">
@@ -983,96 +1219,111 @@ function InlineMergePanel({
       )}
 
       {/* Merge action */}
-      {canMerge ? (
-        <div className="flex w-full">
+      <div className="space-y-2">
+        {canMerge ? (
+          <div className="flex w-full">
+            <Button
+              size="sm"
+              onClick={() => void handleMerge()}
+              disabled={mergeDisabled}
+              className={cn(
+                "min-w-0 flex-1",
+                hasMultipleMethods && "rounded-r-none",
+              )}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Merging...
+                </>
+              ) : (
+                <>
+                  <Check className="mr-2 h-4 w-4" />
+                  {mergeMethodButtonLabels[mergeMethod]}
+                </>
+              )}
+            </Button>
+            {hasMultipleMethods && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="default"
+                    size="icon"
+                    className="h-8 w-8 rounded-l-none border-l border-l-primary-foreground/25"
+                    disabled={mergeDisabled}
+                    aria-label="Choose merge method"
+                  >
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-64">
+                  {allowedMethods.map((method) => (
+                    <DropdownMenuItem
+                      key={method}
+                      className="items-start gap-3 py-2"
+                      onSelect={() => setMergeMethod(method)}
+                    >
+                      <Check
+                        className={
+                          mergeMethod === method
+                            ? "mt-0.5 h-4 w-4"
+                            : "mt-0.5 h-4 w-4 opacity-0"
+                        }
+                      />
+                      <div className="flex flex-col">
+                        <span className="text-xs font-medium">
+                          {mergeMethodLabels[method]}
+                        </span>
+                        <span className="text-muted-foreground text-[10px]">
+                          {mergeMethodDescriptions[method]}
+                        </span>
+                      </div>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
+        ) : canForce ? (
           <Button
             size="sm"
-            onClick={() => void handleMerge()}
-            disabled={mergeDisabled}
-            className={cn(
-              "min-w-0 flex-1",
-              hasMultipleMethods && "rounded-r-none",
-            )}
+            variant="destructive"
+            className="w-full"
+            onClick={handleForceClick}
+            disabled={isSubmitting || isLoadingReadiness || !readiness?.pr}
           >
             {isSubmitting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Merging...
               </>
+            ) : forceConfirming ? (
+              <>
+                <AlertTriangle className="mr-2 h-4 w-4" />
+                Click again to confirm
+              </>
             ) : (
               <>
-                <Check className="mr-2 h-4 w-4" />
-                {mergeMethodButtonLabels[mergeMethod]}
+                <AlertTriangle className="mr-2 h-4 w-4" />
+                Merge without passing checks
               </>
             )}
           </Button>
-          {hasMultipleMethods && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="default"
-                  size="icon"
-                  className="h-8 w-8 rounded-l-none border-l border-l-primary-foreground/25"
-                  disabled={mergeDisabled}
-                  aria-label="Choose merge method"
-                >
-                  <ChevronDown className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-64">
-                {allowedMethods.map((method) => (
-                  <DropdownMenuItem
-                    key={method}
-                    className="items-start gap-3 py-2"
-                    onSelect={() => setMergeMethod(method)}
-                  >
-                    <Check
-                      className={
-                        mergeMethod === method
-                          ? "mt-0.5 h-4 w-4"
-                          : "mt-0.5 h-4 w-4 opacity-0"
-                      }
-                    />
-                    <div className="flex flex-col">
-                      <span className="text-xs font-medium">
-                        {mergeMethodLabels[method]}
-                      </span>
-                      <span className="text-muted-foreground text-[10px]">
-                        {mergeMethodDescriptions[method]}
-                      </span>
-                    </div>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-        </div>
-      ) : canForce ? (
-        <Button
-          size="sm"
-          variant="destructive"
-          className="w-full"
-          onClick={handleForceClick}
-          disabled={isSubmitting || !readiness?.pr}
-        >
-          {isSubmitting ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Merging...
-            </>
-          ) : forceConfirming ? (
-            <>
-              <AlertTriangle className="mr-2 h-4 w-4" />
-              Click again to confirm
-            </>
-          ) : (
-            <>
-              <AlertTriangle className="mr-2 h-4 w-4" />
-              Merge without passing checks
-            </>
-          )}
-        </Button>
-      ) : null}
+        ) : null}
+
+        {canCloseAndArchive ? (
+          <Button
+            size="sm"
+            variant="destructive"
+            className="w-full"
+            onClick={onCloseAndArchiveClick}
+            disabled={isSubmitting}
+          >
+            <GitPullRequestClosed className="mr-2 h-4 w-4" />
+            Close & Archive
+          </Button>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -1082,10 +1333,8 @@ function InlineMergePanel({
 /* ------------------------------------------------------------------ */
 
 export function GitPanel(props: GitPanelProps) {
-  const { gitPanelOpen, gitPanelTab, setGitPanelTab, diffScope, setDiffScope } =
+  const { gitPanelTab, setGitPanelTab, diffScope, setDiffScope } =
     useGitPanel();
-
-  if (!gitPanelOpen) return null;
 
   const {
     session,
@@ -1098,16 +1347,23 @@ export function GitPanel(props: GitPanelProps) {
     hasUncommittedGitChanges,
     supportsRepoCreation,
     hasDiff,
+    canCloseAndArchive,
     diffFiles,
     diffSummary,
+    diffRefreshing,
     onCreateRepoClick,
+    refreshDiff,
     onMerged,
+    onCloseAndArchiveClick,
     onFixChecks,
+    onFixConflicts,
     hasSandbox,
     gitStatus,
+    gitStatusLoading,
     refreshGitStatus,
     onCommitted,
     onPrDetected,
+    isAgentWorking,
   } = props;
 
   const hasDiffChanges =
@@ -1118,8 +1374,13 @@ export function GitPanel(props: GitPanelProps) {
     ? buildingDeploymentUrl
     : prDeploymentUrl;
 
-  // Show the PR tab when there's a PR, or when the branch has diverged and changes are committed
-  const showGitTab = hasExistingPr || (hasDiff && !hasUncommittedGitChanges);
+  // Show the PR tab when there's a PR, or when the branch has diverged and
+  // changes are committed.  Gate on gitStatus being loaded so the tab doesn't
+  // flicker while async data resolves.
+  const showGitTab =
+    hasExistingPr ||
+    (gitStatus !== null && hasDiff && !hasUncommittedGitChanges);
+  const isRefreshingChanges = diffRefreshing || gitStatusLoading;
 
   return (
     <div className="flex h-full flex-col bg-background">
@@ -1150,37 +1411,31 @@ export function GitPanel(props: GitPanelProps) {
               {session.branch}
             </span>
           ) : null}
+
+          {/* Preview deployment button */}
+          {showPreviewButton && previewTargetUrl && (
+            /* oxlint-disable-next-line nextjs/no-html-link-for-pages */
+            <a
+              href={previewTargetUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 rounded-md border border-border px-2 py-1 text-xs font-medium text-foreground transition-colors hover:bg-accent"
+            >
+              <Globe
+                className={cn(
+                  "h-3.5 w-3.5",
+                  !isDeploymentStale && "text-green-500",
+                  isDeploymentStale && "text-amber-500 animate-pulse",
+                )}
+              />
+              Preview
+              <ExternalLink className="h-3 w-3 text-muted-foreground" />
+            </a>
+          )}
         </div>
 
-        {/* Right: preview / create-repo actions */}
-        <div className="flex shrink-0 items-center gap-2">
-          {showPreviewButton && (
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-7 text-xs"
-              onClick={() => {
-                if (!previewTargetUrl) {
-                  return;
-                }
-
-                window.open(previewTargetUrl, "_blank", "noopener,noreferrer");
-              }}
-              disabled={isDeploymentStale && !buildingDeploymentUrl}
-            >
-              {isDeploymentStale ? (
-                <>
-                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                  Deploying…
-                </>
-              ) : (
-                <>
-                  <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
-                  Preview
-                </>
-              )}
-            </Button>
-          )}
+        {/* Right: Create repo button if no repo */}
+        <div className="shrink-0">
           {!hasRepo && supportsRepoCreation && (
             <Button
               size="sm"
@@ -1240,6 +1495,7 @@ export function GitPanel(props: GitPanelProps) {
                     gitStatus={gitStatus}
                     refreshGitStatus={refreshGitStatus}
                     onCommitted={onCommitted}
+                    isAgentWorking={isAgentWorking}
                   />
                 </div>
               )}
@@ -1251,31 +1507,52 @@ export function GitPanel(props: GitPanelProps) {
 
               {/* Scope toggle */}
               {diffFiles && diffFiles.length > 0 && (
-                <div className="mb-2 flex items-center gap-1 px-1">
-                  <button
+                <div className="mb-2 flex items-center justify-between gap-2 px-1">
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setDiffScope("uncommitted")}
+                      className={cn(
+                        "rounded px-2 py-0.5 text-[10px] font-medium transition-colors",
+                        diffScope === "uncommitted"
+                          ? "bg-secondary text-secondary-foreground"
+                          : "text-muted-foreground hover:bg-muted/50",
+                      )}
+                    >
+                      Uncommitted
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDiffScope("branch")}
+                      className={cn(
+                        "rounded px-2 py-0.5 text-[10px] font-medium transition-colors",
+                        diffScope === "branch"
+                          ? "bg-secondary text-secondary-foreground"
+                          : "text-muted-foreground hover:bg-muted/50",
+                      )}
+                    >
+                      All Changes
+                    </button>
+                  </div>
+                  <Button
                     type="button"
-                    onClick={() => setDiffScope("uncommitted")}
-                    className={cn(
-                      "rounded px-2 py-0.5 text-[10px] font-medium transition-colors",
-                      diffScope === "uncommitted"
-                        ? "bg-secondary text-secondary-foreground"
-                        : "text-muted-foreground hover:bg-muted/50",
-                    )}
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      void Promise.all([refreshDiff(), refreshGitStatus()]);
+                    }}
+                    disabled={!hasSandbox || isRefreshingChanges}
+                    className="h-6 w-6 shrink-0 px-0"
+                    title="Refresh changes"
+                    aria-label="Refresh changes"
                   >
-                    Uncommitted
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDiffScope("branch")}
-                    className={cn(
-                      "rounded px-2 py-0.5 text-[10px] font-medium transition-colors",
-                      diffScope === "branch"
-                        ? "bg-secondary text-secondary-foreground"
-                        : "text-muted-foreground hover:bg-muted/50",
-                    )}
-                  >
-                    All Changes
-                  </button>
+                    <RefreshCw
+                      className={cn(
+                        "h-3.5 w-3.5",
+                        isRefreshingChanges && "animate-spin",
+                      )}
+                    />
+                  </Button>
                 </div>
               )}
 
@@ -1342,7 +1619,11 @@ export function GitPanel(props: GitPanelProps) {
               <InlineMergePanel
                 session={session}
                 onMerged={onMerged}
+                onCloseAndArchiveClick={onCloseAndArchiveClick}
+                canCloseAndArchive={canCloseAndArchive}
                 onFixChecks={onFixChecks}
+                onFixConflicts={onFixConflicts}
+                isAgentWorking={isAgentWorking}
               />
             ) : hasRepo ? (
               <InlinePrCreatePanel
@@ -1352,6 +1633,7 @@ export function GitPanel(props: GitPanelProps) {
                 refreshGitStatus={refreshGitStatus}
                 hasUncommittedGitChanges={hasUncommittedGitChanges}
                 onPrDetected={onPrDetected}
+                isAgentWorking={isAgentWorking}
               />
             ) : (
               <div className="text-center text-xs text-muted-foreground py-6">
