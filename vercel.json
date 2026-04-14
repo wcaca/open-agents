@@ -1,0 +1,7 @@
+{
+  "rootDirectory": ".",
+  "buildCommand": "bun run build",
+  "outputDirectory": "apps/web/.next",
+  "installCommand": "curl -fsSL https://bun.sh/install | bash && $HOME/.bun/bin/bun install",
+  "framework": "nextjs"
+}
