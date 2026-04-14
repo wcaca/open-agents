@@ -1,3 +1,4 @@
 {
-  "outputDirectory": "dist"
+  "installCommand": "curl -fsSL https://bun.sh/install | bash",
+  "buildCommand": "bash scripts/vercel-build.sh"
 }
