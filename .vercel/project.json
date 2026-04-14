@@ -1,0 +1,16 @@
+{
+  "projectId": "prj_Li7Hy0hzw6rWlRqi2WL28ZROQNeO",
+  "orgId": "team_mQ8aRVbkqMLUqa7rPnTe3PgP",
+  "projectName": "open-agents",
+  "settings": {
+    "createdAt": 1776196234760,
+    "framework": null,
+    "devCommand": null,
+    "installCommand": null,
+    "buildCommand": null,
+    "outputDirectory": null,
+    "rootDirectory": null,
+    "directoryListing": false,
+    "nodeVersion": "24.x"
+  }
+}

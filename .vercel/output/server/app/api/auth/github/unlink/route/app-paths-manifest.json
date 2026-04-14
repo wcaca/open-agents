@@ -1,0 +1,3 @@
+{
+  "/api/auth/github/unlink/route": "app/api/auth/github/unlink/route.js"
+}

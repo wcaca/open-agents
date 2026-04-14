@@ -1,0 +1,3 @@
+module.exports=[509023,a=>{"use strict";var b=a.i(524144),c=a.i(352425);let d={alt:b.alt,contentType:b.contentType,runtime:b.runtime,size:b.size};async function e(a){let{__metadata_id__:b,...e}=await a.params,f=(0,c.fillMetadataSegment)("/",e,"opengraph-image",!1);return[function(a){let b={alt:a.alt,type:a.contentType||"image/png",url:f+"?44a060b587af3e92"},{size:c}=a;return c&&(b.width=c.width,b.height=c.height),b}(d)]}a.s(["default",0,e])},49417,a=>{a.n(a.i(509023))}];
+
+//# sourceMappingURL=apps_web_app_opengraph-image--metadata_0k34ob1.js.map

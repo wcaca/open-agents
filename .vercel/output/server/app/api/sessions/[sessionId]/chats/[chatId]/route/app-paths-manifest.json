@@ -1,0 +1,3 @@
+{
+  "/api/sessions/[sessionId]/chats/[chatId]/route": "app/api/sessions/[sessionId]/chats/[chatId]/route.js"
+}

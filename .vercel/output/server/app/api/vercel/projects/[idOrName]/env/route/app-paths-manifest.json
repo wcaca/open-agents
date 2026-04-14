@@ -1,0 +1,3 @@
+{
+  "/api/vercel/projects/[idOrName]/env/route": "app/api/vercel/projects/[idOrName]/env/route.js"
+}

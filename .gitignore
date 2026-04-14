@@ -1,10 +1,6 @@
 # dependencies (bun install)
 node_modules
 
-# output
-out
-dist
-*.tgz
 
 # code coverage
 coverage
@@ -35,9 +31,10 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 # Finder (MacOS) folder config
 .DS_Store
 .devtools
-.vercel
+# .vercel
 .env*.local
 
 # open-harness dev server artifacts
 .open-harness-dev-server-state.json
 .open-harness-dev-server-*.pid
+dist

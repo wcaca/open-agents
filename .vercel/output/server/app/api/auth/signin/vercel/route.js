@@ -1,0 +1,11 @@
+var R=require("../../../../../chunks/[turbopack]_runtime.js")("server/app/api/auth/signin/vercel/route.js")
+R.c("server/chunks/node_modules_@opentelemetry_api_build_esm_index_0wv.bf4.js")
+R.c("server/chunks/node_modules_@opentelemetry_api_build_esm_033_63a._.js")
+R.c("server/chunks/[root-of-the-server]__0~iuma0._.js")
+R.c("server/chunks/node_modules_arctic_dist_index_0lhdttr.js")
+R.c("server/chunks/node_modules_next_124cnn1._.js")
+R.c("server/chunks/[root-of-the-server]__01r432a._.js")
+R.c("server/chunks/node_modules_next_dist_0npcise._.js")
+R.c("server/chunks/apps_web__next-internal_server_app_api_auth_signin_vercel_route_actions_077bo6b.js")
+R.m(523307)
+module.exports=R.m(523307).exports

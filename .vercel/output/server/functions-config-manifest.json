@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "functions": {
+    "/api/chat": {
+      "maxDuration": 800
+    },
+    "/api/generate-pr": {
+      "maxDuration": 120
+    },
+    "/api/github/create-repo": {
+      "maxDuration": 120
+    },
+    "/api/sessions/[sessionId]/generate-commit-message": {
+      "maxDuration": 30
+    },
+    "/opengraph-image": {},
+    "/twitter-image": {}
+  }
+}

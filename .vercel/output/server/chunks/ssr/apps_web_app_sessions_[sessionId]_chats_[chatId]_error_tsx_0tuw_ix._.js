@@ -1,0 +1,3 @@
+module.exports=[95942,a=>{"use strict";var b=a.i(187924),c=a.i(572131),d=a.i(541487);a.s(["default",0,function({error:a,reset:e}){return(0,c.useEffect)(()=>{console.error("Chat page error:",a)},[a]),(0,b.jsxs)("div",{className:"flex h-dvh flex-col items-center justify-center gap-4 bg-background",children:[(0,b.jsx)("p",{className:"text-sm text-destructive",children:"Something went wrong"}),(0,b.jsx)(d.Button,{variant:"outline",size:"sm",onClick:e,children:"Try again"})]})}])}];
+
+//# sourceMappingURL=apps_web_app_sessions_%5BsessionId%5D_chats_%5BchatId%5D_error_tsx_0tuw_ix._.js.map

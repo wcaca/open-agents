@@ -1,0 +1,1 @@
+{"version":3,"sources":["../../../../../apps/web/app/config.ts"],"sourcesContent":["import { openHarnessAgent } from \"@open-harness/agent\";\r\n\r\n// Configure the agent here - single source of truth for the web app\r\nexport const webAgent = openHarnessAgent;\r\n"],"names":["webAgent"],"mappings":"wCAAA,EAAA,CAAA,CAAA,QAGO,IAAMA,EAHb,AAGwB,EAHxB,CAAA,CAAA,QAGwB,gBAAgB"}

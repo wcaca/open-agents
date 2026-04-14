@@ -1,0 +1,3 @@
+{
+  "/api/auth/github/reconnect/route": "app/api/auth/github/reconnect/route.js"
+}

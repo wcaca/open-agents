@@ -1,0 +1,3 @@
+{
+  "/api/auth/vercel/callback/route": "app/api/auth/vercel/callback/route.js"
+}
