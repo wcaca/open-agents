@@ -1,0 +1,3 @@
+module.exports=[457150,a=>{"use strict";var b=a.i(187924),c=a.i(572131);let d=(0,c.createContext)(void 0);a.s(["CodespaceProvider",0,function({sessionTitle:a,repoName:c,repoOwner:e,branch:f,cloneUrl:g,children:h}){return(0,b.jsx)(d.Provider,{value:{sessionTitle:a,repoName:c,repoOwner:e,branch:f,cloneUrl:g},children:h})},"useCodespaceContext",0,function(){let a=(0,c.useContext)(d);if(!a)throw Error("useCodespaceContext must be used within a CodespaceProvider");return a}])}];
+
+//# sourceMappingURL=apps_web_app_codespace_%5BsessionId%5D_codespace-context_tsx_0y7h6.~._.js.map

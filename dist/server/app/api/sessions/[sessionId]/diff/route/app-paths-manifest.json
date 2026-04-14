@@ -1,0 +1,3 @@
+{
+  "/api/sessions/[sessionId]/diff/route": "app/api/sessions/[sessionId]/diff/route.js"
+}

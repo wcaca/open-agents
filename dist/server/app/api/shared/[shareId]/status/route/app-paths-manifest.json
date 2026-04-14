@@ -1,0 +1,3 @@
+{
+  "/api/shared/[shareId]/status/route": "app/api/shared/[shareId]/status/route.js"
+}

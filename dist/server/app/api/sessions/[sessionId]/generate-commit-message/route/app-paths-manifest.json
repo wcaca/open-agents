@@ -1,0 +1,3 @@
+{
+  "/api/sessions/[sessionId]/generate-commit-message/route": "app/api/sessions/[sessionId]/generate-commit-message/route.js"
+}

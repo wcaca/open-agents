@@ -31,10 +31,13 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 # Finder (MacOS) folder config
 .DS_Store
 .devtools
-# .vercel
 .env*.local
+.vercel/project.json
+.vercel/targets
+.vercel/next*.js
+.vercel/node_modules
 
 # open-harness dev server artifacts
 .open-harness-dev-server-state.json
 .open-harness-dev-server-*.pid
-dist
+# dist

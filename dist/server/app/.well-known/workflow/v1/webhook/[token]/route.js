@@ -1,0 +1,13 @@
+var R=require("../../../../../../chunks/[turbopack]_runtime.js")("server/app/.well-known/workflow/v1/webhook/[token]/route.js")
+R.c("server/chunks/[root-of-the-server]__0c0i22_._.js")
+R.c("server/chunks/node_modules_@opentelemetry_api_build_esm_index_0wv.bf4.js")
+R.c("server/chunks/node_modules_zod_v4_classic_external_131y~ke.js")
+R.c("server/chunks/node_modules_@opentelemetry_api_build_esm_033_63a._.js")
+R.c("server/chunks/[root-of-the-server]__01r432a._.js")
+R.c("server/chunks/[root-of-the-server]__08vsxde._.js")
+R.c("server/chunks/[root-of-the-server]__09da~ob._.js")
+R.c("server/chunks/[root-of-the-server]__11grpxb._.js")
+R.c("server/chunks/node_modules_@workflow_world_dist_index_12e8qnm.js")
+R.c("server/chunks/0z2a_server_app__well-known_workflow_v1_webhook_[token]_route_actions_01md_f_.js")
+R.m(814103)
+module.exports=R.m(814103).exports
