@@ -1,0 +1,4 @@
+{
+  "installCommand": "bash -c 'curl -fsSL https://bun.sh/install | bash && source ~/.bashrc && bun install'",
+  "buildCommand": "bun run build"
+}
