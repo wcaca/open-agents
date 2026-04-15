@@ -60,6 +60,8 @@ export const metadata: Metadata = {
     "Deploy your own copy of Open Harness to sign in with your own account.",
 };
 
+export const dynamic = "force-dynamic";
+
 export default function DeployYourOwnPage() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-background px-6 py-24 text-foreground">
