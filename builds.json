@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "require": "@vercel/next",
+      "use": "@vercel/next",
+      "config": {
+        "zeroConfig": true,
+        "framework": "nextjs",
+        "outputDirectory": ".vercel/output"
+      }
+    }
+  ]
+}
