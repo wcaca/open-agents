@@ -1,3 +1,50 @@
 {
-  "version": 3
+  "version": 3,
+  "overrides": {
+    "_next/static/chunks/(.*)": {
+      "path": "static/chunks/$1",
+      "contentType": "application/javascript"
+    },
+    "_next/static/media/(.*)": {
+      "path": "static/media/$1",
+      "contentType": "video/\\_next/media/(.*)"
+    },
+    "_next/static/([0-9a-f]+)/_buildManifest.js": {
+      "path": "static/$1/_buildManifest.js",
+      "contentType": "application/javascript"
+    },
+    "_next/static/([0-9a-f]+)/_ssgManifest.js": {
+      "path": "static/$1/_ssgManifest.js",
+      "contentType": "application/javascript"
+    },
+    "_next/static/([0-9a-f]+)/_clientMiddlewareManifest.js": {
+      "path": "static/$1/_clientMiddlewareManifest.js",
+      "contentType": "application/javascript"
+    }
+  },
+  "routes": [
+    {
+      "src": "/_next/static/(?<hash>[0-9a-f]+)/(?<path>.*)",
+      "dest": "/_next/static/%24hash/%24path",
+      "headers": {
+        "x-nextjs-data": "1"
+      }
+    },
+    {
+      "src": "/_next/image(.*)",
+      "dest": "/_next/image$1"
+    },
+    {
+      "src": "/(.+)\\.rsc$",
+      "dest": "/$1.rsc"
+    },
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/$1"
+    }
+  ]
 }
