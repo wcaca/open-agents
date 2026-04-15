@@ -1,0 +1,5 @@
+{
+  "framework": null,
+  "buildCommand": "echo using-pre-built-output",
+  "outputDirectory": ".vercel/output"
+}
